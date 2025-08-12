@@ -1,0 +1,4 @@
+name = "PrimalDualActiveSet"
+uuid = "b45bd851-8860-4e6c-9bc0-0816ca05a65d"
+authors = ["john.papad "]
+version = "0.1.0"
