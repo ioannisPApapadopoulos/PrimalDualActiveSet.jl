@@ -4,7 +4,7 @@ using Gridap, LinearAlgebra
 f(x) = 20
 φ(x) = 1.0
 
-hik_its_2d, bm_its_2d  = [], []
+hik_its_2d  = []
 vhs = []
 ns = 2 .^(4:5)
 for n in ns

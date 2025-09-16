@@ -1,24 +1,96 @@
-using ObstacleProblemSolvers
+using PrimalDualActiveSet
 using Gridap, LinearAlgebra
 
 function pdas_signorini_solver(nx::Integer,ny::Integer,f::Function, history::Bool=false)
   P = SignoriniRectangle(nx,ny,f)
   u0 = FEFunction(P.V, zeros(P.V.nfree))
   uh, iter = hik(P, u0, max_iter=150, history=history)
-  return uh,iter
+  
+  a(u,v) = ∫(∇(u) ⊙ ∇(v) + u ⋅ v)*P.dΩ
+  j(u,du,v) = ∫(∇(du) ⊙ ∇(v) + du ⋅ v)*P.dΩ
+  op = FEOperator(a, j, P.U, P.V)
+  A = Gridap.Algebra.jacobian(op, zeros(num_free_dofs(P.V)))
+  return uh,iter,A
 end
 
 f(x) = VectorValue(0.0,10.0)
 
 iters, uniform_iters = [], []
-for nx in [5,10,20,40,80,160]#,320]
-  uh, iter = pdas_signorini_solver(5*nx,5,f)
-  push!(iters, iter)
-  uh, iter = pdas_signorini_solver(5*nx,nx,f)
-  push!(uniform_iters, iter)
+uhs, λs, As = [], [], []
+uniform_uhs, uniform_λs, uniform_As = [], [], []
+for nx in [160,320] # 5,10,20,40,80,
+  uh, iter, A = pdas_signorini_solver(5*nx,5,f,true)
+  push!(iters, iter[1])
+  push!(uhs, uh)
+  push!(λs, iter[3])
+  push!(As, A)
+
+  uh, iter, A = pdas_signorini_solver(5*nx,nx,f,true)
+  push!(uniform_iters, iter[1])
+  push!(uniform_uhs, uh)
+  push!(uniform_λs, iter[3])
+  push!(uniform_As, A)
 end
 uniform_iters
 iters
+
+norms = []
+for i in 1:lastindex(uhs)
+    vh = uhs[i]
+    # λ = λs[i]
+    push!(norms,[])
+    for j in 1:lastindex(vh)-1
+        d = vh[j].free_values-vh[end].free_values
+        # d2 = λ[j] - λ[end]
+        # push!(norms[i],sqrt(d' * As[i] * d  + d2' * (As[i] \ d2)))
+        push!(norms[i],sqrt(d' * As[i] * d  ))
+        # push!(norms[i], norm(d))
+    end
+end
+uniform_norms = []
+for i in 1:lastindex(uhs)
+    vh = uniform_uhs[i]
+    # λ = λs[i]
+    push!(uniform_norms,[])
+    for j in 1:lastindex(vh)-1
+        d = vh[j].free_values-vh[end].free_values
+        # d2 = λ[j] - λ[end]
+        # push!(norms[i],sqrt(d' * As[i] * d  + d2' * (As[i] \ d2)))
+        push!(uniform_norms[i],sqrt(d' * uniform_As[i] * d  ))
+        # push!(norms[i], norm(d))
+    end
+end
+
+Plots.plot(uniform_norms,
+    labels=[L"5" L"10" L"20" L"40" L"80" L"160" L"320"],
+    xlabel="HIK Iterations",
+    ylabel=L"$(\Vert u^k - u^{\!\!*} \Vert^2_{A} + \Vert \lambda^k - \lambda^{\!\!*}\Vert^2_{A^{-1}})^{1/2}$",
+    yaxis=:log10, 
+    linewidth=2,
+    labelfontsize=12,xlabelfontsize=15, xtickfontsize=10, ytickfontsize=10, 
+    legendfontsize=9)
+Plots.plot(norms,
+    labels=[L"5" L"10" L"20" L"40" L"80" L"160" L"320"],
+    xlabel="HIK Iterations",
+    ylabel=L"$(\Vert u^k - u^{\!\!*} \Vert^2_{A} + \Vert \lambda^k - \lambda^{\!\!*}\Vert^2_{A^{-1}})^{1/2}$",
+    yaxis=:log10, 
+    linewidth=2,
+    labelfontsize=12,xlabelfontsize=15, xtickfontsize=10, ytickfontsize=10, 
+    legendfontsize=9)
+
+
+eoc = []
+sls = []
+for i in 1:lastindex(uhs)
+    n = uniform_norms[i]
+    push!(eoc, [])
+    for j in 1:lastindex(n)-2
+        push!(eoc[i], log(n[j+2]/n[j+1])/log(n[j+1]/n[j]))
+    end
+    # push!(sls,findall(x->x>1.01, eoc[end])[1])
+end
+
+
 
 nx = 100
 ny = 20
