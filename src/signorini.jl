@@ -55,6 +55,43 @@ function SignoriniRectangle(nx::Integer, ny::Integer, f::Function)
     return Signorini{Float64}(model, labels, V, U, Ω, dΩ, (a,j), op, lb, ub)
 end
 
+function ScalarSignoriniRectangle(nx::Integer, ny::Integer, f::Function)
+    domain = (0,1,0,1)
+    partition = (nx,ny)
+    model = CartesianDiscreteModel(domain,partition)
+    model = simplexify(model)
+    reffe = ReferenceFE(lagrangian,Float64, 1)
+
+    labels = get_face_labeling(model)
+    add_tag_from_tags!(labels,"left",[1,3,7])
+    add_tag_from_tags!(labels,"right",[2,4,8])
+    add_tag_from_tags!(labels,"bottom",[5])
+
+    V = TestFESpace(model, reffe, conformity=:H1, dirichlet_tags=["left", "right", "bottom"])
+
+    U = TrialFESpace(V, 0.0)
+
+    Ω = Triangulation(model)
+    dΩ = Measure(Ω,5)
+
+    a(u, v) =∫(∇(u) ⋅ ∇(v) - f ⋅ v) * dΩ
+    j(u, du, v) =∫(∇(du) ⋅ ∇(v)) * dΩ
+    op = FEOperator(a, j, U, V)
+
+    Γ = BoundaryTriangulation(Ω, tags=[3,6,4]) # upper bound
+    dΓ = Measure(Γ,5)
+
+    a_b(u,v) = ∫(1.0 ⋅ v)*dΓ
+    op_b = FEOperator(a_b, U, V)
+
+    ub = Gridap.Algebra.residual(op_b, FEFunction(V, zeros(V.nfree)))
+    ub[abs.(ub) .> 0.0] .= 0.5
+    ub[ub .== 0.0] .= 1e10
+
+    lb = -1e10*ones(V.nfree)
+    return Signorini{Float64}(model, labels, V, U, Ω, dΩ, (a,j), op, lb, ub)
+end
+
 
 """
 Box Labelling:
@@ -112,4 +149,8 @@ end
 
 function hik(P::Signorini, u0::Gridap.FESpaces.SingleFieldFEFunction; max_iter::Integer=1000, history::Bool=false)
     hik(P.op, u0, P.lb, P.ub, max_iter=max_iter, sym_pos_def=true, history=history)
+end
+
+function ssn(P::Signorini, M::AbstractMatrix{T}, u0::Gridap.FESpaces.SingleFieldFEFunction; max_iter::Integer=1000, history::Bool=false) where T
+    ssn(P.op, u0, P.lb, P.ub, M, max_iter=max_iter, history=history)
 end

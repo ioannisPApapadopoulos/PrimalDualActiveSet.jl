@@ -217,7 +217,7 @@ function hik(op, uh, lb::AbstractVector{T}, ub::AbstractVector{T}; tol::T=1e-9, 
     end
 end
 
-function fem_hik(op, uh, lb::AbstractVector{T}, ub::AbstractVector{T}, M::AbstractMatrix{T}; tol::T=1e-9, max_iter::Int=1000, damping=1, history=false, show_trace=true) where T
+function ssn(op, uh, lb::AbstractVector{T}, ub::AbstractVector{T}, M::AbstractMatrix{T}; tol::T=1e-9, max_iter::Int=1000, damping=1, history=false, show_trace=true) where T
     
     x = uh.free_values[:]
 
@@ -228,6 +228,7 @@ function fem_hik(op, uh, lb::AbstractVector{T}, ub::AbstractVector{T}, M::Abstra
     active_lb = []
     active_ub = []
     active    = []
+    actives   = []
     
     project!(x, lb, ub)
     vh = FEFunction(uh.fe_space,x)
@@ -238,6 +239,7 @@ function fem_hik(op, uh, lb::AbstractVector{T}, ub::AbstractVector{T}, M::Abstra
     active_lb = findall(x .≈ lb) ∩ findall(r .> 0)
     active_ub = findall(x .≈ ub) ∩ findall(r .< 0)
     active = vcat(active_lb, active_ub)
+    history && push!(actives, active)
 
     # print(active)
 
@@ -256,7 +258,9 @@ function fem_hik(op, uh, lb::AbstractVector{T}, ub::AbstractVector{T}, M::Abstra
     
     if history
         us = []
+        λs = []
     end
+    
     
     while (norm_residual_Ω) > tol && (iter < max_iter)
         
@@ -290,7 +294,9 @@ function fem_hik(op, uh, lb::AbstractVector{T}, ub::AbstractVector{T}, M::Abstra
         rc = zeros(n)
         rc[active] = (x-ub)[active]
         rc[inactive] = dual[inactive]
-        δ = jac \ -[r+M*dual;rc]
+
+        lu_jac = MatrixFactorizations.lu(jac)
+        δ = lu_jac \ -[r+M*dual;rc]
         x = x + δ[1:n]
         dual = dual + δ[n+1:end]
         # xx = range(0,1,100)
@@ -317,8 +323,10 @@ function fem_hik(op, uh, lb::AbstractVector{T}, ub::AbstractVector{T}, M::Abstra
         # project!(x,lb,ub)
         vh = FEFunction(uh.fe_space,x)
         if history
-            push!(us, (vh, dual[:]))
+            push!(us, FEFunction(vh.fe_space,copy(vh.free_values)))
+            push!(λs, copy(dual))
         end
+
         r, J  = Gridap.Algebra.residual_and_jacobian(op, vh)
         norm_residual_Ω  = norm(dual - max.(zeros(n,1), dual+x-ub) - max.(zeros(n,1), dual-x+lb))
         norm_residual_Ω  = norm_residual_Ω  + norm(r+M*dual)
@@ -334,7 +342,7 @@ function fem_hik(op, uh, lb::AbstractVector{T}, ub::AbstractVector{T}, M::Abstra
         @warn("HIK: Iteration max reached.")
     end
     if history
-        return us, iter
+        return us, [iter, actives, λs]
     else
         return vh, iter
     end

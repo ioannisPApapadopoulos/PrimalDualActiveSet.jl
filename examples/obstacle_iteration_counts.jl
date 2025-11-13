@@ -7,7 +7,7 @@ f(x) = 20
 
 hik_its_1d = Integer[]
 ns = 2 .^(4:10)
-vhs_1d, λs_1d, As = [], [], []
+vhs_1d, λs_1d, As_1d = [], [], []
 for n in ns
     P = ObstacleProblemUniform(n,f,φ,d=1)
     u0 = FEFunction(P.V, zeros(P.V.nfree))
@@ -15,30 +15,34 @@ for n in ns
     push!(hik_its_1d, iter[1])
     push!(vhs_1d, vh)
     push!(λs_1d, iter[3])
-    push!(As, Gridap.Algebra.jacobian(P.op, zeros(n)))
+    push!(As_1d, Gridap.Algebra.jacobian(P.op, zeros(n)))
 end
 print("HIK 1D Iteration Counts: $(hik_its_1d)")
 
 hik_its_2d = []
 ns = 2 .^(4:10)
+vhs_2d, λs_2d, As_2d = [], [], []
 for n in ns
     P = ObstacleProblemUniform(n,f,φ,d=2)
     u0 = FEFunction(P.V, zeros(P.V.nfree))
-    vh, iter = hik(P, u0, max_iter=1000)
+    vh, iter = hik(P, u0, max_iter=1000, history=true)
     push!(hik_its_2d, iter)
+    push!(vhs_2d, vh)
+    push!(λs_2d, iter[3])
+    push!(As_2d, Gridap.Algebra.jacobian(P.op, zeros(n)))
 end
 print("HIK 2D Iteration Counts: $(hik_its_2d)")
 
 
 norms = []
-for i in 1:lastindex(vhs_1d)
-    vh = vhs_1d[i]
-    λ = λs_1d[i]
+for i in 1:lastindex(vhs_2d)
+    vh = vhs_2d[i]
+    λ = λs_2d[i]
     push!(norms,[])
     for j in 1:lastindex(vh)-1
         d = vh[j].free_values-vh[end].free_values
         d2 = λ[j] - λ[end]
-        push!(norms[i],sqrt(d' * As[i] * d  + d2' * (As[i] \ d2)))
+        push!(norms[i],sqrt(d' * As_2d[i] * d  + d2' * (As_2d[i] \ d2)))
     end
 end
 
@@ -50,4 +54,4 @@ Plots.plot(norms,
     linewidth=2,
     labelfontsize=12,xlabelfontsize=15, xtickfontsize=10, ytickfontsize=10, 
     legendfontsize=9)
-Plots.savefig("obstacle_convergence.pdf")
+Plots.savefig("obstacle_convergence_2d.pdf")

@@ -46,3 +46,7 @@ end
 function hik(P::ObstacleProblem, u0::Gridap.FESpaces.SingleFieldFEFunction; max_iter::Integer=1000, history::Bool=false)
     hik(P.op, u0, P.lb, P.ub, max_iter=max_iter, sym_pos_def=true, history=history)
 end
+
+function ssn(P::ObstacleProblem, M::AbstractMatrix{T}, u0::Gridap.FESpaces.SingleFieldFEFunction; max_iter::Integer=1000, history::Bool=false) where T
+    ssn(P.op, u0, P.lb, P.ub, M, max_iter=max_iter, history=history)
+end

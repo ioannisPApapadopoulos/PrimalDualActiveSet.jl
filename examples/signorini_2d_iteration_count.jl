@@ -1,5 +1,6 @@
 using PrimalDualActiveSet
 using Gridap, LinearAlgebra
+using Plots, LaTeXStrings
 
 function pdas_signorini_solver(nx::Integer,ny::Integer,f::Function, history::Bool=false)
   P = SignoriniRectangle(nx,ny,f)
@@ -9,26 +10,29 @@ function pdas_signorini_solver(nx::Integer,ny::Integer,f::Function, history::Boo
   a(u,v) = ∫(∇(u) ⊙ ∇(v) + u ⋅ v)*P.dΩ
   j(u,du,v) = ∫(∇(du) ⊙ ∇(v) + du ⋅ v)*P.dΩ
   op = FEOperator(a, j, P.U, P.V)
-  A = Gridap.Algebra.jacobian(op, zeros(num_free_dofs(P.V)))
-  return uh,iter,A
+  AH1 = Gridap.Algebra.jacobian(op, zeros(num_free_dofs(P.V)))
+
+  A = Gridap.Algebra.jacobian(P.op, zeros(num_free_dofs(P.V)))
+  return uh,iter, AH1, A
 end
 
 f(x) = VectorValue(0.0,10.0)
 
 iters, uniform_iters = [], []
-uhs, λs, As = [], [], []
-uniform_uhs, uniform_λs, uniform_As = [], [], []
-for nx in [160,320] # 5,10,20,40,80,
-  uh, iter, A = pdas_signorini_solver(5*nx,5,f,true)
-  push!(iters, iter[1])
-  push!(uhs, uh)
-  push!(λs, iter[3])
-  push!(As, A)
+uhs, λs, AH1s, As = [], [], [], []
+uniform_uhs, uniform_λs, uniform_AH1s, uniform_As = [], [], [], []
+for nx in [5,10,20,40,80,160,320] #
+#   uh, iter, AH1, A = pdas_signorini_solver(5*nx,5,f,true)
+#   push!(iters, iter[1])
+#   push!(uhs, uh)
+#   push!(λs, iter[3])
+#   push!(As, A)
 
-  uh, iter, A = pdas_signorini_solver(5*nx,nx,f,true)
+  uh, iter, AH1, A = pdas_signorini_solver(5*nx,nx,f,true)
   push!(uniform_iters, iter[1])
   push!(uniform_uhs, uh)
   push!(uniform_λs, iter[3])
+  push!(uniform_AH1s, AH1)
   push!(uniform_As, A)
 end
 uniform_iters
@@ -48,15 +52,16 @@ for i in 1:lastindex(uhs)
     end
 end
 uniform_norms = []
-for i in 1:lastindex(uhs)
+for i in 1:lastindex(uniform_uhs)
     vh = uniform_uhs[i]
-    # λ = λs[i]
+    # λ = uniform_λs[i]
     push!(uniform_norms,[])
     for j in 1:lastindex(vh)-1
         d = vh[j].free_values-vh[end].free_values
         # d2 = λ[j] - λ[end]
         # push!(norms[i],sqrt(d' * As[i] * d  + d2' * (As[i] \ d2)))
-        push!(uniform_norms[i],sqrt(d' * uniform_As[i] * d  ))
+        # push!(uniform_norms[i],sqrt(d' * uniform_As[i] * d + d2' * (uniform_As[i] \ d2) ))
+        push!(uniform_norms[i],sqrt(d' * uniform_AH1s[i] * d ))
         # push!(norms[i], norm(d))
     end
 end
@@ -69,6 +74,19 @@ Plots.plot(uniform_norms,
     linewidth=2,
     labelfontsize=12,xlabelfontsize=15, xtickfontsize=10, ytickfontsize=10, 
     legendfontsize=9)
+Plots.savefig("HIK-convergence-uniform-signorini.pdf")
+
+Plots.plot(uniform_norms,
+    labels=[L"5" L"10" L"20" L"40" L"80" L"160" L"320"],
+    xlabel="HIK Iterations",
+    ylabel=L"$\Vert u^k - u^{\!\!*} \Vert_{H^1(\Omega)}$",
+    yaxis=:log10, 
+    linewidth=2,
+    labelfontsize=12,xlabelfontsize=15, xtickfontsize=10, ytickfontsize=10, 
+    legendfontsize=9)
+Plots.savefig("HIK-convergence-uniform-signorini-H1.pdf")
+
+
 Plots.plot(norms,
     labels=[L"5" L"10" L"20" L"40" L"80" L"160" L"320"],
     xlabel="HIK Iterations",

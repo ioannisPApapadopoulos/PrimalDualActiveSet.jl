@@ -3,9 +3,9 @@ module PrimalDualActiveSet
 using Gridap, SparseArrays, MatrixFactorizations
 import LinearAlgebra: ldiv!, Symmetric
 
-export hik, fem_hik, bm,
+export hik, ssn, bm,
     ObstacleProblem, ObstacleProblemUniform,
-    Signorini, SignoriniBox, SignoriniRectangle,
+    Signorini, SignoriniBox, SignoriniRectangle, ScalarSignoriniRectangle,
     OptimalControl, OptimalControlUniformSetup, 
     ControlConstrainedUniform, ControlH1ConstrainedUniform,
     StateConstrainedUniform, StateH1ConstrainedUniform
