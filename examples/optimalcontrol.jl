@@ -2,8 +2,7 @@ using PrimalDualActiveSet, Gridap
 using Plots, LaTeXStrings
 
 domain = (0,1,0,1)
-n=50
-β = 1e-2
+n, β = 50, 1e-2
 ud(x) = 5.0
 φ(x) = 1.0
 

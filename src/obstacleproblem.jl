@@ -1,16 +1,3 @@
-struct ObstacleProblem{T}
-    model::DiscreteModel
-    labels::Gridap.Geometry.FaceLabeling
-    V::Gridap.FESpaces.UnconstrainedFESpace
-    U::TrialFESpace
-    Ω::Gridap.Geometry.BodyFittedTriangulation
-    dΩ::Gridap.CellData.GenericMeasure
-    res_jac::Tuple{Function, Function}
-    op::Gridap.FESpaces.FEOperatorFromWeakForm
-    lb::AbstractVector{T}
-    ub::AbstractVector{T}
-end
-
 function ObstacleProblemUniform(n::Int, f::Function, φ::Function; d::Int=1)
     if d == 1
         domain = (0,1)
@@ -41,12 +28,4 @@ function ObstacleProblemUniform(n::Int, f::Function, φ::Function; d::Int=1)
     lb = -1e10*ones(V.nfree)
     ub = interpolate_everywhere(φ, V).free_values
     return ObstacleProblem{Float64}(model, labels, V, U, Ω, dΩ, (a,j), op, lb, ub)
-end
-
-function hik(P::ObstacleProblem, u0::Gridap.FESpaces.SingleFieldFEFunction; max_iter::Integer=1000, history::Bool=false)
-    hik(P.op, u0, P.lb, P.ub, max_iter=max_iter, sym_pos_def=true, history=history)
-end
-
-function ssn(P::ObstacleProblem, M::AbstractMatrix{T}, u0::Gridap.FESpaces.SingleFieldFEFunction; max_iter::Integer=1000, history::Bool=false) where T
-    ssn(P.op, u0, P.lb, P.ub, M, max_iter=max_iter, history=history)
 end

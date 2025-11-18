@@ -1,14 +1,24 @@
-struct Signorini{T}
-    model::DiscreteModel
-    labels::Gridap.Geometry.FaceLabeling
-    V::Gridap.FESpaces.UnconstrainedFESpace
-    U::TrialFESpace
-    Ω::Gridap.Geometry.BodyFittedTriangulation
-    dΩ::Gridap.CellData.GenericMeasure
-    res_jac::Tuple{Function, Function}
-    op::Gridap.FESpaces.FEOperatorFromWeakForm
-    lb::AbstractVector{T}
-    ub::AbstractVector{T}
+function _2d_top_dofs(x, ub::T) where T
+    if x[2] ≈ 1.0
+        return VectorValue(1e10, ub)
+    else
+        return VectorValue(1e10, 1e10)
+    end
+end
+
+function _2d_scalar_top_dofs(x, ub::T) where T
+    if x[2] ≈ 1.0
+        return ub
+    else
+        return 1e10
+    end
+end
+function _3d_top_dofs(x, ub::T) where T
+    if x[3] ≈ 1.0
+        return VectorValue(1e10, 1e10, ub)
+    else
+        return VectorValue(1e10, 1e10, 1e10)
+    end
 end
 
 function SignoriniRectangle(nx::Integer, ny::Integer, f::Function)
@@ -41,18 +51,20 @@ function SignoriniRectangle(nx::Integer, ny::Integer, f::Function)
     
     op = FEOperator(a, j, U, V)
 
-    Γ = BoundaryTriangulation(Ω, tags=[3,6,4]) # upper bound
-    dΓ = Measure(Γ,5)
+    # Γ = BoundaryTriangulation(Ω, tags=[3,6,4]) # upper bound
+    # dΓ = Measure(Γ,5)
 
-    a_b(u,v) = ∫(VectorValue(0,1.0) ⋅ v)*dΓ
-    op_b = FEOperator(a_b, U, V)
+    # a_b(u,v) = ∫(VectorValue(0,1.0) ⋅ v)*dΓ
+    # op_b = FEOperator(a_b, U, V)
 
-    ub = Gridap.Algebra.residual(op_b, FEFunction(V, zeros(V.nfree)))
-    ub[abs.(ub) .> 0.0] .= 0.5
-    ub[ub .== 0.0] .= 1e10
+    # ub = Gridap.Algebra.residual(op_b, FEFunction(V, zeros(V.nfree)))
+    # ub[abs.(ub) .> 0.0] .= 0.5
+    # ub[ub .== 0.0] .= 1e10
+
+    ub = interpolate_everywhere(x->_2d_top_dofs(x, 0.5), V).free_values
 
     lb = -1e10*ones(V.nfree)
-    return Signorini{Float64}(model, labels, V, U, Ω, dΩ, (a,j), op, lb, ub)
+    return ObstacleProblem{Float64}(model, labels, V, U, Ω, dΩ, (a,j), op, lb, ub)
 end
 
 function ScalarSignoriniRectangle(nx::Integer, ny::Integer, f::Function)
@@ -78,18 +90,19 @@ function ScalarSignoriniRectangle(nx::Integer, ny::Integer, f::Function)
     j(u, du, v) =∫(∇(du) ⋅ ∇(v)) * dΩ
     op = FEOperator(a, j, U, V)
 
-    Γ = BoundaryTriangulation(Ω, tags=[3,6,4]) # upper bound
-    dΓ = Measure(Γ,5)
+    # Γ = BoundaryTriangulation(Ω, tags=[3,6,4]) # upper bound
+    # dΓ = Measure(Γ,5)
 
-    a_b(u,v) = ∫(1.0 ⋅ v)*dΓ
-    op_b = FEOperator(a_b, U, V)
+    # a_b(u,v) = ∫(1.0 ⋅ v)*dΓ
+    # op_b = FEOperator(a_b, U, V)
 
-    ub = Gridap.Algebra.residual(op_b, FEFunction(V, zeros(V.nfree)))
-    ub[abs.(ub) .> 0.0] .= 0.5
-    ub[ub .== 0.0] .= 1e10
+    # ub = Gridap.Algebra.residual(op_b, FEFunction(V, zeros(V.nfree)))
+    # ub[abs.(ub) .> 0.0] .= 0.5
+    # ub[ub .== 0.0] .= 1e10
 
+    ub = interpolate_everywhere(x->_2d_scalar_top_dofs(x, 1.0), V).free_values
     lb = -1e10*ones(V.nfree)
-    return Signorini{Float64}(model, labels, V, U, Ω, dΩ, (a,j), op, lb, ub)
+    return ObstacleProblem{Float64}(model, labels, V, U, Ω, dΩ, (a,j), op, lb, ub)
 end
 
 
@@ -133,24 +146,17 @@ function SignoriniBox(nx::Integer,ny::Integer,nz::Integer,f::Function)
 
     op = FEOperator(a, j, U, V)
 
-    Γ = BoundaryTriangulation(Ω, tags=["contact"])
-    dΓ = Measure(Γ,5)
+    # Γ = BoundaryTriangulation(Ω, tags=["contact"])
+    # dΓ = Measure(Γ,5)
 
-    a_b(u,v) = ∫(VectorValue(0,0,1.0) ⋅ v)*dΓ
-    op_b = FEOperator(a_b, U, V)
+    # a_b(u,v) = ∫(VectorValue(0,0,1.0) ⋅ v)*dΓ
+    # op_b = FEOperator(a_b, U, V)
 
-    ub = Gridap.Algebra.residual(op_b, FEFunction(V, zeros(V.nfree)))
-    ub[abs.(ub) .> 0.0] .= 0.5
-    ub[ub .== 0.0] .= 1e10
+    # ub = Gridap.Algebra.residual(op_b, FEFunction(V, zeros(V.nfree)))
+    # ub[abs.(ub) .> 0.0] .= 0.5
+    # ub[ub .== 0.0] .= 1e10
 
+    ub = interpolate_everywhere(x->_3d_top_dofs(x, 0.5), V).free_values
     lb = -1e10*ones(V.nfree)
-    return Signorini{Float64}(model, labels, V, U, Ω, dΩ, (a,j), op, lb, ub)
-end
-
-function hik(P::Signorini, u0::Gridap.FESpaces.SingleFieldFEFunction; max_iter::Integer=1000, history::Bool=false)
-    hik(P.op, u0, P.lb, P.ub, max_iter=max_iter, sym_pos_def=true, history=history)
-end
-
-function ssn(P::Signorini, M::AbstractMatrix{T}, u0::Gridap.FESpaces.SingleFieldFEFunction; max_iter::Integer=1000, history::Bool=false) where T
-    ssn(P.op, u0, P.lb, P.ub, M, max_iter=max_iter, history=history)
+    return ObstacleProblem{Float64}(model, labels, V, U, Ω, dΩ, (a,j), op, lb, ub)
 end

@@ -1,16 +1,3 @@
-struct OptimalControl{T}
-    model::DiscreteModel
-    labels::Gridap.Geometry.FaceLabeling
-    V::MultiFieldFESpace
-    U::MultiFieldFESpace
-    Ω::Gridap.Geometry.BodyFittedTriangulation
-    dΩ::Gridap.CellData.GenericMeasure
-    res_jac::Tuple{Function, Function}
-    op::Gridap.FESpaces.FEOperatorFromWeakForm
-    lb::AbstractVector{T}
-    ub::AbstractVector{T}
-end
-
 function OptimalControlUniformSetup(n::Int, ud::Function, β::T) where T
 
     domain = (0,1,0,1)
@@ -50,7 +37,7 @@ function ControlConstrainedUniform(n::Int, ud::Function, β::T, φ::Function) wh
     ubc = interpolate_everywhere(φ, V1)
     ub = [1e10*ones(V0.nfree);ubc.free_values;1e10*ones(V0.nfree)]
     lb = -1e10*ones(num_free_dofs(V))
-    return OptimalControl{T}(model, labels, V, U, Ω, dΩ, (a,j), op, lb, ub)
+    return NonSymmetricObstacleProblem{T}(model, labels, V, U, Ω, dΩ, (a,j), op, lb, ub)
 end
 
 function StateConstrainedUniform(n::Int, ud::Function, β::T, φ::Function) where T
@@ -59,7 +46,7 @@ function StateConstrainedUniform(n::Int, ud::Function, β::T, φ::Function) wher
     ubu = interpolate_everywhere(φ, V0)
     ub = [ubu.free_values;1e10*ones(V1.nfree);1e10*ones(V0.nfree)]
     lb = -1e10*ones(num_free_dofs(V))
-    return OptimalControl{T}(model, labels, V, U, Ω, dΩ, (a,j), op, lb, ub)
+    return NonSymmetricObstacleProblem{T}(model, labels, V, U, Ω, dΩ, (a,j), op, lb, ub)
 end
 
 function Control_H1_Uniform_Setup(n::Int, ud::Function, β::T) where T
@@ -101,7 +88,7 @@ function ControlH1ConstrainedUniform(n::Int, ud::Function, β::T, φ::Function) 
     ubc = interpolate_everywhere(φ, V1)
     ub = [1e10*ones(V0.nfree);ubc.free_values;1e10*ones(V0.nfree)]
     lb = -1e10*ones(num_free_dofs(V))
-    return OptimalControl{T}(model, labels, V, U, Ω, dΩ, (a,j), op, lb, ub)
+    return NonSymmetricObstacleProblem{T}(model, labels, V, U, Ω, dΩ, (a,j), op, lb, ub)
 end
 
 function State_H1_Uniform_Setup(n::Int, ud::Function, β::T) where T
@@ -143,9 +130,5 @@ function StateH1ConstrainedUniform(n::Int, ud::Function, β::T, φ::Function) wh
     ubu = interpolate_everywhere(φ, V0)
     ub = [ubu.free_values;1e10*ones(V1.nfree);1e10*ones(V0.nfree)]
     lb = -1e10*ones(num_free_dofs(V))
-    return OptimalControl{T}(model, labels, V, U, Ω, dΩ, (a,j), op, lb, ub)
-end
-
-function hik(P::OptimalControl, z0::Gridap.MultiField.MultiFieldFEFunction; max_iter::Integer=1000, history::Bool=false)
-    hik(P.op, z0, P.lb, P.ub, max_iter=max_iter, history=history)
+    return NonSymmetricObstacleProblem{T}(model, labels, V, U, Ω, dΩ, (a,j), op, lb, ub)
 end
