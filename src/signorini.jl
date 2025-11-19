@@ -21,11 +21,8 @@ function _3d_top_dofs(x, ub::T) where T
     end
 end
 
-function SignoriniRectangle(nx::Integer, ny::Integer, f::Function)
-    domain = (0,5,0,1)
-    partition = (nx,ny)
-    model = CartesianDiscreteModel(domain,partition)
-    model = simplexify(model)
+function SignoriniRectangle(model::Gridap.Geometry.UnstructuredDiscreteModel, f::Function)
+
     reffe = ReferenceFE(lagrangian,VectorValue{2,Float64}, 1)
 
     labels = get_face_labeling(model)
@@ -65,6 +62,14 @@ function SignoriniRectangle(nx::Integer, ny::Integer, f::Function)
 
     lb = -1e10*ones(V.nfree)
     return ObstacleProblem{Float64}(model, labels, V, U, Ω, dΩ, (a,j), op, lb, ub)
+end
+
+function SignoriniRectangle(nx::Integer, ny::Integer, f::Function)
+    domain = (0,5,0,1)
+    partition = (nx,ny)
+    model = CartesianDiscreteModel(domain,partition)
+    model = simplexify(model)
+    return SignoriniRectangle(model, f)
 end
 
 function ScalarSignoriniRectangle(nx::Integer, ny::Integer, f::Function)

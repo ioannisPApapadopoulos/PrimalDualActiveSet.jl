@@ -1,66 +1,81 @@
-using Gridap, Gridap.Geometry, Gridap.Adaptivity
+using PrimalDualActiveSet, Gridap, Gridap.Geometry, Gridap.Adaptivity
 
-ϵ = 1e-2
-r(x) = ((x[1]-0.5)^2 + (x[2]-0.5)^2)^(1/2)
-u_exact(x) = 1.0 / (ϵ + r(x))
-order = 1
-model = simplexify(CartesianDiscreteModel((0,1,0,1),(20,20)))
-function adapt_fun(x)
-    if x[1] ≥ 0.1
+nx = 5
+
+function adapt_fun(x, level)
+    gap = 1/(level*nx)
+    if x[2] ≥ 1 - gap
         return 1.0
     else
         return 0.0
     end
 end
 
-  reffe = ReferenceFE(lagrangian,Float64,order)
-  V = TestFESpace(model,reffe;dirichlet_tags=["boundary"])
-  U = TrialFESpace(V,u_exact)
+# function adapt_fun(x, level)
+#     gap = 1/(level*nx)
+#     if x[2] ≥ 1 - gap || x[2] ≤ gap || x[1] ≤ gap || x[1] ≥ 5 - gap
+#         return 1.0
+#     else
+#         return 0.0
+#     end
+# end
 
-  "Setup integration measures"
-  Ω = Triangulation(model)
-  Γ = Boundary(model)
-  Λ = Skeleton(model)
+model = simplexify(CartesianDiscreteModel((0,5,0,1),(5*nx,nx)))
+models = Any[model]
+reffe = ReferenceFE(lagrangian,Float64,1)
 
-  dΩ = Measure(Ω,4*order)
-  dΓ = Measure(Γ,2*order)
+for level in 1:6
+    V = TestFESpace(model,reffe)
+    Ω = Triangulation(model)
+    dΩ = Measure(Ω,2)
+    adapt_fun_level(x) = adapt_fun(x,level)
+    ηh(u)  = ∫(adapt_fun_level)*dΩ
+    uh = FEFunction(V, zeros(V.nfree))
+    η = estimate(ηh,uh)
+    m = DorflerMarking(0.9999)
+    I = Adaptivity.mark(m,η)
 
-  ηh(u)  = ∫(adapt_fun)*dΩ
+    method = Adaptivity.NVBRefinement(model)
+    model = Adaptivity.get_model(refine(method,model;cells_to_refine=I))
+    push!(models, model)
+end
 
-  "Solve the FE problem"
-  op = AffineFEOperator(a,l,U,V)
-  uh = solve(op)
+Ω = Triangulation(models[7])
+writevtk(Ω,"fmodel")
 
+function pdas_signorini_solver(model,f::Function, history::Bool=false)
+  P = SignoriniRectangle(model,f)
+  u0 = FEFunction(P.V, zeros(P.V.nfree))
+  uh, iter = hik(P, u0, max_iter=150, history=history)
 
-  "Compute error indicators"
-  η = estimate(ηh,uh)
+  A = Gridap.Algebra.jacobian(P.op, zeros(num_free_dofs(P.V)))
+  return uh, iter, A
+end
 
+f(x) = VectorValue(0.0,10.0)
 
-  "Mark cells for refinement using Dörfler marking
-  This strategy marks cells containing a fixed fraction (0.9) of the total error"
-  m = DorflerMarking(0.9999)
-  I = Adaptivity.mark(m,η)
+adaptive_iters = []
+adaptive_uhs, adaptive_λs, adaptive_As = [], [], []
+for model in models
 
-  method = Adaptivity.NVBRefinement(model)
-  amodel = refine(method,model;cells_to_refine=I)
-  fmodel = Adaptivity.get_model(amodel)
+  uh, iter, A = pdas_signorini_solver(model,f,true)
+  push!(adaptive_iters, iter[1])
+  push!(adaptive_uhs, uh)
+  push!(adaptive_λs, iter[3])
+  push!(adaptive_As, A)
+end
+adaptive_iters
 
-Ω1 = Triangulation(fmodel)
+rm("tmp_nl", recursive=true)
+if !isdir("tmp_nl")
+    mkdir("tmp_nl")
+end
 
-writevtk(
-Ω1,"fmodel"
-)
-
-V1 = TestFESpace(fmodel,reffe)
-u0 = interpolate_everywhere(x->sin(x[1]), V)# FEFunction(V, zeros(V.nfree))
-u0 = interpolate(u0, V)
-
-u1 = FEFunction(V1, zeros(V1.nfree))
-u1.free_values .= u0(V1.fe_basis.trian.grid.node_coordinates)
-
-V1d = TestFESpace(fmodel,reffe;dirichlet_tags=["boundary"])
-u1d = interpolate(u1,V1d)
-
-using Gridap
-writevtk(Ω, "model", cellfields=["uh"=>u0])
-writevtk(Ω1, "fmodel", cellfields=["uh"=>u1d])
+level=7; Ω = adaptive_uhs[level][1].fe_space.fe_basis.trian
+createpvd("signorini_2d") do pvd
+    pvd[1] = createvtk(Ω, "tmp_nl/signorini_2d_1" * ".vtu", cellfields=["u" => adaptive_uhs[level][1]])
+    for k in 2:length(adaptive_uhs[level])
+      pvd[k] = createvtk(Ω, "tmp_nl/signorini_2d_$k" * ".vtu", cellfields=["u" => adaptive_uhs[level][k]])
+    end
+end
+# writevtk(Triangulation(models[7]), "adaptive_solution.vtu", cellfields=["u"=>adaptive_uhs[end][end]])
