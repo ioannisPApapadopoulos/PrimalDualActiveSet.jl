@@ -1,6 +1,6 @@
 module PrimalDualActiveSet
 
-using Gridap, SparseArrays, MatrixFactorizations
+using Gridap, SparseArrays, MatrixFactorizations, ExtendableSparse
 import LinearAlgebra: ldiv!, Symmetric
 
 export hik, ssn, bm,

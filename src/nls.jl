@@ -233,7 +233,7 @@ function ssn(op, uh, lb::AbstractVector{T}, ub::AbstractVector{T}, M::AbstractMa
     project!(x, lb, ub)
     vh = FEFunction(uh.fe_space,x)
     n = length(x)
-    
+
     r, J  = Gridap.Algebra.residual_and_jacobian(op, vh)
 
     active_lb = findall(x .≈ lb) ∩ findall(r .> 0)
@@ -261,7 +261,11 @@ function ssn(op, uh, lb::AbstractVector{T}, ub::AbstractVector{T}, M::AbstractMa
         λs = []
     end
     
-    
+    uD = ExtendableSparseMatrix(Diagonal(ones(n)))
+    lD = ExtendableSparseMatrix(Diagonal(ones(n)))
+
+    # jac = [J M;uD lD]
+
     while (norm_residual_Ω) > tol && (iter < max_iter)
         
         # update = zeros(T, n);
@@ -282,23 +286,24 @@ function ssn(op, uh, lb::AbstractVector{T}, ub::AbstractVector{T}, M::AbstractMa
         ni, na = length(inactive), length(active)
         @assert ni+na == n
 
-        uD = Diagonal(ones(n))
-        uD[inactive, inactive] .= spzeros(ni, ni)
-        lD = Diagonal(ones(n))
-        lD[active, active] .= spzeros(na, na)
-        # uI = [spzeros(ni,ni+na);spzeros(na,ni) -Diagonal(ones(na))]
-        # lI = [Diagonal(ones(ni)) spzeros(ni, na);spzeros(na, ni+na)]
-        # jac = [J M;lI uI]
-        # jac = [J Diagonal(ones(na+ni));uD lD]
-        jac = [J M;uD lD]
+        # This is now much fast via ExtendableSparse
+        uDv, lDv = ones(n), ones(n)
+        uDv[inactive] .= 0
+        lDv[active] .= 0
+        uD[:,:] = Diagonal(uDv)
+        lD[:,:] = Diagonal(lDv)
+
+        # Now much faster as long as everything is sparse (not diagonal)
+        jac = sparse([J M;uD lD])
+
         rc = zeros(n)
-        rc[active] = (x-ub)[active]
-        rc[inactive] = dual[inactive]
+        rc[active] .= (x-ub)[active]
+        rc[inactive] .= dual[inactive]
 
         lu_jac = MatrixFactorizations.lu(jac)
         δ = lu_jac \ -[r+M*dual;rc]
-        x = x + δ[1:n]
-        dual = dual + δ[n+1:end]
+        x .+= δ[1:n]
+        dual .+= δ[n+1:end]
         # xx = range(0,1,100)
         # p = Plots.plot(xx, vh.(Point.(xx)))
         # display(p)
@@ -315,7 +320,7 @@ function ssn(op, uh, lb::AbstractVector{T}, ub::AbstractVector{T}, M::AbstractMa
 
         # print(active)
 
-        tmp_index = index[:]
+        tmp_index = copy(index)
         tmp_index[active] .= 0
         inactive  = findall(x->x!=0, tmp_index)
         

@@ -8,8 +8,7 @@ f(x) = 20
 
 
 hik_its = Integer[]
-ns = 2 .^(4:8)
-# vhs, λs, As = [], [], []
+ns = 2 .^(4:10)
 for n in ns
     P = ObstacleProblemUniform(n,f,φ,d=2)
     u0 = FEFunction(P.V, zeros(P.V.nfree))
@@ -21,8 +20,5 @@ for n in ns
 
     vh, iter = ssn(P, M, u0, max_iter=1000)
     push!(hik_its, iter)
-    # push!(vhs, vh)
-    # push!(λs, iter[3])
-    # push!(As, Gridap.Algebra.jacobian(P.op, zeros(n)))
 end
 print("HIK 2D Iteration Counts: $(hik_its)")

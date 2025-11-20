@@ -4,6 +4,7 @@ authors = ["john.papad "]
 version = "0.1.0"
 
 [deps]
+ExtendableSparse = "95c220a8-a1cf-11e9-0c77-dbfce5f500b3"
 Gridap = "56d4f2e9-7ea1-5844-9cf6-b9c51ca7ce8e"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MatrixFactorizations = "a3b82374-2e81-5b9e-98ce-41277c0e4c87"
