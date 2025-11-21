@@ -90,7 +90,7 @@ end
 
 ## HIK
 
-function hik(op, uh, lb::AbstractVector{T}, ub::AbstractVector{T}; tol::T=1e-9, max_iter::Int=1000, damping=1, c=1.0, sym_pos_def=false, history=false, show_trace=true) where T
+function hik(op, uh, lb::AbstractVector{T}, ub::AbstractVector{T}; tol::T=1e-9, max_iter::Int=1000, damping=1, c=1.0, sym_pos_def=false, krylov_solver=false, nullsp=Vector{T}(), history=false, show_trace=true) where T
     
     x = uh.free_values[:]
 
@@ -139,6 +139,15 @@ function hik(op, uh, lb::AbstractVector{T}, ub::AbstractVector{T}; tol::T=1e-9, 
         us = []
         λs = []
     end
+
+    if krylov_solver && isempty(nullsp)
+        nullsp = ones(n)
+    end
+
+    # if krylov_solver && sym_pos_def
+    #     # p = CholeskyPreconditioner(J, 5)
+    #     p = Preconditioners.AMGPreconditioner{SmoothedAggregation}(J)
+    # end
     
     while (norm_residual_Ω) > tol && (iter < max_iter)
         
@@ -152,13 +161,28 @@ function hik(op, uh, lb::AbstractVector{T}, ub::AbstractVector{T}; tol::T=1e-9, 
             cr = r[inactive]
         end
 
-        if sym_pos_def
-            fac_J_inactive = MatrixFactorizations.cholesky(Symmetric(J[inactive,inactive]))
+        jac = J[inactive,inactive]
+
+        if krylov_solver
+            if sym_pos_def
+                jac = sparse(Symmetric(jac))
+                ml = smoothed_aggregation(jac, B=nullsp[inactive,:])
+                p = aspreconditioner(ml)
+                # p = ILUZero.ilu0(jac)
+                up = cg(jac, -cr, Pl=p)
+                update[inactive] .= up
+            else
+                error("Non-symmetric preconditioner not yet implemented.")
+                # # up = gmres(jac, -cr, Pl=p, restart=300, verbose=true)
+            end
         else
-            fac_J_inactive = MatrixFactorizations.lu(J[inactive,inactive])
+            if sym_pos_def
+                fac_J_inactive = MatrixFactorizations.cholesky(Symmetric(jac))
+            else
+                fac_J_inactive = MatrixFactorizations.lu(jac)
+            end
+            update[inactive] .= -(fac_J_inactive\cr)
         end
-    
-        update[inactive] .= -(fac_J_inactive\cr)
 
         x .+= damping*update;
         vh = FEFunction(uh.fe_space,x)

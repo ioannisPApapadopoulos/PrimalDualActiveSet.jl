@@ -12,7 +12,7 @@ function ObstacleProblemUniform(n::Int, f::Function, φ::Function; d::Int=1)
         error("Not implemented for d=$d.")
     end
     model = CartesianDiscreteModel(domain,partition)
-    if d==2
+    if d ≥ 2
         model = simplexify(model)
     end
     reffe_u = ReferenceFE(lagrangian,Float64,1)

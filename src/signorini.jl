@@ -5,7 +5,6 @@ function _2d_top_dofs(x, ub::T) where T
         return VectorValue(1e10, 1e10)
     end
 end
-
 function _2d_scalar_top_dofs(x, ub::T) where T
     if x[2] ≈ 1.0
         return ub
@@ -151,7 +150,7 @@ function SignoriniBox(nx::Integer,ny::Integer,nz::Integer,f::Function)
 
     op = FEOperator(a, j, U, V)
 
-    # Γ = BoundaryTriangulation(Ω, tags=["contact"])
+    # Γ = BoundaryTriangulation(Ω, tags=["contact"]) # upper bound
     # dΓ = Measure(Γ,5)
 
     # a_b(u,v) = ∫(VectorValue(0,0,1.0) ⋅ v)*dΓ
@@ -164,4 +163,60 @@ function SignoriniBox(nx::Integer,ny::Integer,nz::Integer,f::Function)
     ub = interpolate_everywhere(x->_3d_top_dofs(x, 0.5), V).free_values
     lb = -1e10*ones(V.nfree)
     return ObstacleProblem{Float64}(model, labels, V, U, Ω, dΩ, (a,j), op, lb, ub)
+end
+
+## Rigid body motions for robust AMG.
+function linear_elasticity_nsp(P::ObstacleProblem{T}, d::Integer) where T
+    if d==2
+        rbms = zeros(P.V.nfree ,3)
+        coords = P.V.fe_basis.trian.grid.node_coordinates
+        coordsM = zeros(length(coords), 2)
+        for i in 1:length(coords)
+            for j in 1:2
+                coordsM[i,j] = coords[i][j]
+            end
+        end
+        coordsM = coordsM[findall(x->0<x[1]<5, coordsM[:,1]),:]
+        rbms[1:2:end, 1] .= 1.0
+        rbms[2:2:end, 2] .= 1.0
+        for i in 1:size(coordsM,1)
+            x, y = coordsM[i,:]
+            rbms[2*i-1, 3] = -y
+            rbms[2*i,   3] =  x
+        end
+    elseif d==3
+        rbms = zeros(P.V.nfree, 6)
+        coords = P.V.fe_basis.trian.grid.node_coordinates
+        coordsM = zeros(length(coords), 3)
+        for i in 1:length(coords)
+            for j in 1:3
+                coordsM[i,j] = coords[i][j]
+            end
+        end
+        coordsM = coordsM[findall(x->0<x[1]<5, coordsM[:,1]),:]
+        rbms[1:3:end, 1] .= 1.0
+        rbms[2:3:end, 2] .= 1.0
+        rbms[3:3:end, 3] .= 1.0
+
+        # rotations
+        for i in 1:size(coordsM,1)
+            x, y, z = coordsM[i,:]
+            rbms[3*i-2, 4] =  0
+            rbms[3*i-1, 4] = -z
+            rbms[3*i,   4] =  y
+
+            rbms[3*i-2, 5] =  z
+            rbms[3*i-1, 5] =  0
+            rbms[3*i,   5] = -x
+
+            rbms[3*i-2, 6] = -y
+            rbms[3*i-1, 6] =  x
+            rbms[3*i,   6] =  0
+        end
+
+    else
+        error("Only implemented for d=2 and 3.")
+    end
+
+    return rbms
 end

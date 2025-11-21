@@ -24,8 +24,8 @@ struct NonSymmetricObstacleProblem{T}
     ub::AbstractVector{T}
 end
 
-function hik(P::ObstacleProblem, u0::Gridap.FESpaces.SingleFieldFEFunction; max_iter::Integer=1000, history::Bool=false)
-    hik(P.op, u0, P.lb, P.ub, max_iter=max_iter, sym_pos_def=true, history=history)
+function hik(P::ObstacleProblem, u0::Gridap.FESpaces.SingleFieldFEFunction; max_iter::Integer=1000, krylov_solver::Bool=false, history::Bool=false, nullsp=Vector{Float64}())
+    hik(P.op, u0, P.lb, P.ub, max_iter=max_iter, sym_pos_def=true, krylov_solver=krylov_solver, history=history, nullsp=nullsp)
 end
 
 function ssn(P::ObstacleProblem, M::AbstractMatrix{T}, u0::Gridap.FESpaces.SingleFieldFEFunction; max_iter::Integer=1000, history::Bool=false) where T

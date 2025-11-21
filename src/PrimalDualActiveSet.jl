@@ -1,7 +1,9 @@
 module PrimalDualActiveSet
 
-using Gridap, SparseArrays, MatrixFactorizations, ExtendableSparse
+using Gridap, SparseArrays, MatrixFactorizations
+using ExtendableSparse, AlgebraicMultigrid, ILUZero
 import LinearAlgebra: ldiv!, Symmetric
+import IterativeSolvers: cg, gmres
 
 export hik, ssn, bm,
     ObstacleProblem, ObstacleProblemUniform,

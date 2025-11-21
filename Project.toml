@@ -4,8 +4,11 @@ authors = ["john.papad "]
 version = "0.1.0"
 
 [deps]
+AlgebraicMultigrid = "2169fc97-5a83-5252-b627-83903c6c433c"
 ExtendableSparse = "95c220a8-a1cf-11e9-0c77-dbfce5f500b3"
 Gridap = "56d4f2e9-7ea1-5844-9cf6-b9c51ca7ce8e"
+ILUZero = "88f59080-6952-5380-9ea5-54057fb9a43f"
+IterativeSolvers = "42fd0dbc-a981-5370-80f2-aaf504508153"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MatrixFactorizations = "a3b82374-2e81-5b9e-98ce-41277c0e4c87"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
