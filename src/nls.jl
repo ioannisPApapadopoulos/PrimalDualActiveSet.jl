@@ -169,7 +169,7 @@ function hik(op, uh, lb::AbstractVector{T}, ub::AbstractVector{T}; tol::T=1e-9, 
                 ml = smoothed_aggregation(jac, B=nullsp[inactive,:])
                 p = aspreconditioner(ml)
                 # p = ILUZero.ilu0(jac)
-                up = cg(jac, -cr, Pl=p)
+                up = cg(jac, -cr, Pl=p, verbose=true)
                 update[inactive] .= up
             else
                 error("Non-symmetric preconditioner not yet implemented.")

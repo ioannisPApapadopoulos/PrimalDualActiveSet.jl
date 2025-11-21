@@ -166,7 +166,7 @@ function SignoriniBox(nx::Integer,ny::Integer,nz::Integer,f::Function)
 end
 
 ## Rigid body motions for robust AMG.
-function linear_elasticity_nsp(P::ObstacleProblem{T}, d::Integer) where T
+function linear_elasticity_nullsp(P::ObstacleProblem{T}, d::Integer) where T
     if d==2
         rbms = zeros(P.V.nfree ,3)
         coords = P.V.fe_basis.trian.grid.node_coordinates

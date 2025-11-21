@@ -7,7 +7,7 @@ import IterativeSolvers: cg, gmres
 
 export hik, ssn, bm,
     ObstacleProblem, ObstacleProblemUniform,
-    SignoriniBox, SignoriniRectangle, ScalarSignoriniRectangle,
+    SignoriniBox, SignoriniRectangle, ScalarSignoriniRectangle, linear_elasticity_nullsp,
     OptimalControlUniformSetup, 
     ControlConstrainedUniform, ControlH1ConstrainedUniform,
     StateConstrainedUniform, StateH1ConstrainedUniform,
