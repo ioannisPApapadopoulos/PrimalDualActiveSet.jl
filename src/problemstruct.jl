@@ -37,8 +37,8 @@ struct NonlinearNonSymmetricObstacleProblem{T}
     ub::AbstractVector{T}
 end
 
-function hik(P::ObstacleProblem, u0::Gridap.FESpaces.SingleFieldFEFunction; solver_flag::Val=Val(1), max_iter::Integer=1000, history::Bool=false, nullsp=Vector{Float64}())
-    hik(P.op, u0, P.lb, P.ub, Val(true), Val(true), solver_flag=solver_flag, max_iter=max_iter, history=history, nullsp=nullsp)
+function hik(P::ObstacleProblem, u0::Gridap.FESpaces.SingleFieldFEFunction; solver_flag::Val=Val(1),tol::Float64=1e-9, max_iter::Integer=1000, history::Bool=false, nullsp=Vector{Float64}())
+    hik(P.op, u0, P.lb, P.ub, Val(true), Val(true), solver_flag=solver_flag, max_iter=max_iter, tol=tol, history=history, nullsp=nullsp)
 end
 
 function ssn(P::ObstacleProblem, M::AbstractMatrix{T}, u0::Gridap.FESpaces.SingleFieldFEFunction; max_iter::Integer=1000, history::Bool=false) where T

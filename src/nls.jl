@@ -19,21 +19,21 @@ end
 update_residual_and_jacobian!(::Val{true}, J, r, op, vh) = Gridap.Algebra.residual!(r, op, vh)
 update_residual_and_jacobian!(::Val{false}, J, r, op, vh) = Gridap.Algebra.residual_and_jacobian!(r, J, op, vh)    
 
-function compute_inactive_set_update(::Val{1}, ::Val{true}, jac::SparseArrays.SparseMatrixCSC, cr::AbstractVector, nullsp::AbstractArray)
+function compute_inactive_set_update(::Val{1}, ::Val{true}, jac::SparseArrays.SparseMatrixCSC, cr::AbstractVector, nullsp::AbstractArray, inactive::Vector{Int})
     fac = MatrixFactorizations.cholesky(Symmetric(jac))
     return -(fac\cr)
 end
-function compute_inactive_set_update(::Val{1}, ::Val{false}, jac::SparseArrays.SparseMatrixCSC, cr::AbstractVector, nullsp::AbstractArray)
+function compute_inactive_set_update(::Val{1}, ::Val{false}, jac::SparseArrays.SparseMatrixCSC, cr::AbstractVector, nullsp::AbstractArray, inactive::Vector{Int})
     fac = MatrixFactorizations.lu(jac)
     return -(fac\cr)
 end
-function compute_inactive_set_update(::Val{2}, ::Val{true}, jac::SparseArrays.SparseMatrixCSC, cr::AbstractVector, nullsp::AbstractArray)
+function compute_inactive_set_update(::Val{2}, ::Val{true}, jac::SparseArrays.SparseMatrixCSC, cr::AbstractVector, nullsp::AbstractArray, inactive::Vector{Int})
     ml = smoothed_aggregation(jac, B=nullsp[inactive,:])
     p = aspreconditioner(ml)
-    up = cg(jac, -cr, Pl=p, verbose=true)
+    up = cg(jac, -cr, Pl=p, verbose=true, reltol=1e-4, abstol=1e-6)
     return up
 end
-function compute_inactive_set_update(::Val{3}, ::Val{true}, jac::SparseArrays.SparseMatrixCSC, cr::AbstractVector, nullsp::AbstractArray)
+function compute_inactive_set_update(::Val{3}, ::Val{true}, jac::SparseArrays.SparseMatrixCSC, cr::AbstractVector, nullsp::AbstractArray, inactive::Vector{Int})
     p = ILUZero.ilu0(jac)
     up = cg(jac, -cr, Pl=p, verbose=true)
     return up
@@ -97,7 +97,7 @@ function hik(op, uh, lb::AbstractVector{T}, ub::AbstractVector{T}, linear_flag::
         λs = []
     end
 
-    if solver_flag==Val(2) && isempty(nullspace)
+    if solver_flag==Val(2) && isempty(nullsp)
         nullsp = ones(n)
     end
 
@@ -125,7 +125,7 @@ function hik(op, uh, lb::AbstractVector{T}, ub::AbstractVector{T}, linear_flag::
 
         jac = J[inactive,inactive]
 
-        update[inactive] .= compute_inactive_set_update(solver_flag, sym_pos_def, jac, cr, nullsp)
+        update[inactive] .= compute_inactive_set_update(solver_flag, sym_pos_def, jac, cr, nullsp, inactive)
         x .+= damping*update;
         vh.free_values .= x
 

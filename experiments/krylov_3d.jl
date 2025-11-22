@@ -1,24 +1,21 @@
 using PrimalDualActiveSet
 using Gridap, LinearAlgebra
-using Plots, LaTeXStrings
 
 f(x) = VectorValue(0.0,0.0,10.0)
 function pdas_signorini_solver(n::Integer,f::Function, history::Bool=false)
   P = SignoriniBox(5*n,n,n,f)
   nullsp = linear_elasticity_nullsp(P, 3)
   u0 = FEFunction(P.V, zeros(P.V.nfree))
-  uh, iter = hik(P, u0, max_iter=150, solver_flag=Val(1), history=history, nullsp=nullsp)
+  uh, iter = hik(P, u0, max_iter=150, tol=1e-5, solver_flag=Val(2), history=history, nullsp=nullsp)
 
-  A = Gridap.Algebra.jacobian(P.op, zeros(num_free_dofs(P.V)))
-  return uh,iter, A
+  return uh, iter
 end
 
+uh, iter = pdas_signorini_solver(160,f)
 
-iters, uniform_iters = [], []
-uniform_uhs, uniform_λs,uniform_As = [], [], []
-tic = @elapsed for n in [10] #
-  uh, iter, A = pdas_signorini_solver(n,f,true)
-  push!(uniform_iters, iter[1])
-  push!(uniform_uhs, uh)
-end
-uniform_iters
+# uniform_iters = [], []
+# for n in [160] #
+#   uh, iter = pdas_signorini_solver(n,f)
+#   push!(uniform_iters, iter[1])
+# end
+# uniform_iters
