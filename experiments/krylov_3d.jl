@@ -7,7 +7,7 @@ function pdas_signorini_solver(n::Integer,f::Function, history::Bool=false)
   P = SignoriniBox(5*n,n,n,f)
   nullsp = linear_elasticity_nullsp(P, 3)
   u0 = FEFunction(P.V, zeros(P.V.nfree))
-  uh, iter = hik(P, u0, max_iter=150, history=history, krylov_solver=true,nullsp=nullsp)
+  uh, iter = hik(P, u0, max_iter=150, solver_flag=Val(1), history=history, nullsp=nullsp)
 
   A = Gridap.Algebra.jacobian(P.op, zeros(num_free_dofs(P.V)))
   return uh,iter, A

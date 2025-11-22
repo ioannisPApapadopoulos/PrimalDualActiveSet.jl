@@ -38,5 +38,5 @@ function HyperContactRectangle(nx::Integer, ny::Integer, f::Function)
 
     ub = interpolate_everywhere(x->_2d_top_dofs(x, 0.2), V).free_values
     lb = -1e10*ones(V.nfree)
-    return NonSymmetricObstacleProblem{Float64}(model, labels, V, U, Ω, dΩ, (a,j), op, lb, ub)
+    return NonlinearNonSymmetricObstacleProblem{Float64}(model, labels, V, U, Ω, dΩ, (a,j), op, lb, ub)
 end
