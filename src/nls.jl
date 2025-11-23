@@ -100,12 +100,6 @@ function hik(op, uh, lb::AbstractVector{T}, ub::AbstractVector{T}, linear_flag::
     if solver_flag==Val(2) && isempty(nullsp)
         nullsp = ones(n)
     end
-
-
-    # if krylov_solver && sym_pos_def
-    #     # p = CholeskyPreconditioner(J, 5)
-    #     p = Preconditioners.AMGPreconditioner{SmoothedAggregation}(J)
-    # end
     
     update = similar(x)
     cr_buffer = similar(x)
@@ -130,7 +124,6 @@ function hik(op, uh, lb::AbstractVector{T}, ub::AbstractVector{T}, linear_flag::
         vh.free_values .= x
 
         update_residual_and_jacobian!(linear_flag, J, r, op, vh)
-        # r, J  = Gridap.Algebra.residual_and_jacobian(op, vh)
     
         # which way should the sign be?
         dual[inactive] .= zero(T);
@@ -181,18 +174,18 @@ function hik(op, uh, lb::AbstractVector{T}, ub::AbstractVector{T}, linear_flag::
     end
 end
 
-function ssn(op, uh, lb::AbstractVector{T}, ub::AbstractVector{T}, M::AbstractMatrix{T}; tol::T=1e-9, max_iter::Int=1000, damping=1, history=false, show_trace=true) where T
+function ssn(op, uh, lb::AbstractVector{T}, ub::AbstractVector{T}, M::AbstractMatrix{T}, linear_flag::Val; 
+                tol::T=1e-9, max_iter::Int=1000, damping::T=one(T), 
+                history::Bool=false, show_trace::Bool=true) where T
     
-    x = uh.free_values[:]
+    x = copy(uh.free_values)
 
-    index = Vector(1:lastindex(x))
     iter = 0
-    inactive = index
 
-    active_lb = []
-    active_ub = []
-    active    = []
-    actives   = []
+    active_lb = Int[]
+    active_ub = Int[]
+    active    = Int[]
+    actives   = Vector{Vector{Int}}() 
     
     project!(x, lb, ub)
     vh = FEFunction(uh.fe_space,x)
@@ -200,52 +193,45 @@ function ssn(op, uh, lb::AbstractVector{T}, ub::AbstractVector{T}, M::AbstractMa
 
     r, J  = Gridap.Algebra.residual_and_jacobian(op, vh)
 
-    active_lb = findall(x .≈ lb) ∩ findall(r .> 0)
-    active_ub = findall(x .≈ ub) ∩ findall(r .< 0)
-    active = vcat(active_lb, active_ub)
-    history && push!(actives, active)
+    for i in 1:n
+        if isapprox(x[i], lb[i]) && r[i] > 0
+            push!(active_lb, i)
+        elseif isapprox(x[i], ub[i]) && r[i] < 0
+            push!(active_ub, i)
+        end
+    end
+    append!(active, active_lb)
+    append!(active, active_ub)
 
-    # print(active)
-
-    dual = zeros(n)
+    dual = zeros(T, n)
     mr = (M \ r)
-    dual[active_lb] = mr[active_lb]
-    dual[active_ub] = -mr[active_ub]
-    tmp_index = index[:]
-    tmp_index[active] .= 0
-    inactive  = findall(x->x!=0, tmp_index)
+    dual[active_lb] .= mr[active_lb]
+    dual[active_ub] .= -mr[active_ub]
+
+    dual_lb, dual_ub = zeros(n), zeros(n)
+
+    mask = trues(n)
+    mask[active] .= false
+    inactive = findall(mask)
     
     norm_residual_Ω = norm(reduced_residual(r, x, lb, ub))
-    # %normResidualOmega = norm(dual - max(zeros(n,1), dual+x-ub) - max(zeros(n,1), dual-x-lb));
-    # %normResidualOmega = normResidualOmega + norm(evaluatedResidual+dual);
     show_trace && print("HIK: Iteration 0, residual norm = $norm_residual_Ω\n")
     
     if history
         us = []
         λs = []
     end
+
+    if solver_flag==Val(2) && isempty(nullsp)
+        nullsp = ones(n)
+    end
     
     uD = ExtendableSparseMatrix(Diagonal(ones(n)))
     lD = ExtendableSparseMatrix(Diagonal(ones(n)))
 
-    # jac = [J M;uD lD]
+    update = similar(x)
 
     while (norm_residual_Ω) > tol && (iter < max_iter)
-        
-        # update = zeros(T, n);
-        # update[active_lb] = lb[active_lb] - x[active_lb]
-        # update[active_ub] = ub[active_ub] - x[active_ub]
-
-
-        # cr = r + [J[:, active] M[:, inactive]]*[update[active];-dual[inactive]]
-        # # cr = r + J[:, active] * update[active]
-   
-        # full_update = [J[:,inactive] M[:,active]] \ (-cr)
-        # update[inactive] = full_update[1:length(inactive)]
-        # dual[active] = dual[active] + full_update[length(inactive)+1:end]
-        # dual[inactive] .= zero(T);
-        # x = x + damping*update;
-        # vh = FEFunction(uh.fe_space,x)
 
         ni, na = length(inactive), length(active)
         @assert ni+na == n
@@ -268,38 +254,37 @@ function ssn(op, uh, lb::AbstractVector{T}, ub::AbstractVector{T}, M::AbstractMa
         δ = lu_jac \ -[r+M*dual;rc]
         x .+= δ[1:n]
         dual .+= δ[n+1:end]
-        # xx = range(0,1,100)
-        # p = Plots.plot(xx, vh.(Point.(xx)))
-        # display(p)
-        # sleep(1)
-    
-        # which way should the sign be?
-        
-        # dual[active_lb] = r[active_lb]
-        # dual[active_ub] = -r[active_ub]
+
         
         active_lb = findall((dual .- x .+ lb).>0)
         active_ub = findall((dual .-ub .+x) .>0)
-        active = vcat(active_lb, active_ub)
+        empty!(active)
+        append!(active, active_lb)
+        append!(active, active_ub)
 
         # print(active)
 
-        tmp_index = copy(index)
-        tmp_index[active] .= 0
-        inactive  = findall(x->x!=0, tmp_index)
-        
-        # norm_residual_Ω = norm(reduced_residual(r, x, lb, ub))
-        # project!(x,lb,ub)
-        vh = FEFunction(uh.fe_space,x)
+        fill!(mask, true)
+        mask[active] .= false
+        inactive = findall(mask)
+
+        vh.free_values .= x
         if history
             push!(us, FEFunction(vh.fe_space,copy(vh.free_values)))
             push!(λs, copy(dual))
         end
 
-        r, J  = Gridap.Algebra.residual_and_jacobian(op, vh)
-        norm_residual_Ω  = norm(dual - max.(zeros(n,1), dual+x-ub) - max.(zeros(n,1), dual-x+lb))
-        norm_residual_Ω  = norm_residual_Ω  + norm(r+M*dual)
-        # norm_residual_Ω = norm(reduced_residual(r, x, lb, ub))
+        update_residual_and_jacobian!(linear_flag, J, r, op, vh)
+
+        @. dual_lb = dual-x+lb
+        @. dual_ub = dual+x-ub
+        norm_residual_Ω  = norm(dual - clamp!(dual_ub, 0, Inf) - clamp!(dual_lb, 0, Inf))
+        dual_lb .= (M*dual) 
+        norm_residual_Ω  = (norm_residual_Ω  
+            + norm(r[active_lb]-dual_lb[active_lb])
+            + norm(r[active_ub]+dual_lb[active_ub])
+            + norm(r[inactive])
+        )
 
 
         iter += 1
@@ -319,62 +304,95 @@ end
 
 ## Benson-Munson
 function reduced_residual(r::AbstractVector{T}, x::AbstractVector{T}, lb::AbstractVector{T}, ub::AbstractVector{T}) where T
-    rr = r[:];
-    rr[x .<= lb] = min.(rr[x .<= lb], zero(T))
-    rr[x .>= ub] = max.(rr[x .>= ub], zero(T))
+    rr = copy(r)
+    zeroT = zero(T)
+    @inbounds for i in eachindex(r)
+        if x[i] <= lb[i]
+            rr[i] = min(rr[i], zeroT)
+        elseif x[i] >= ub[i]
+            rr[i] = max(rr[i], zeroT)
+        end
+    end
     return rr
 end
 
-function bm(op, uh, lb::AbstractVector{T}, ub::AbstractVector{T}; us::AbstractVector=[], tol::T=1e-9, max_iter::Int=1000, damping=1, history=false, show_trace=true) where T
+function bm(op, uh, lb::AbstractVector{T}, ub::AbstractVector{T}, linear_flag::Val, sym_pos_def::Val;
+                solver_flag::Val=Val(1),            
+                tol::T=1e-9, 
+                max_iter::Int=1000, damping::T=one(T), 
+                history::Bool=false, show_trace::Bool=true) where T
 
     x = uh.free_values[:]
+    n = length(x)
 
-    index = Vector(1:lastindex(x))
     iter = 0
 
     project!(x, lb, ub)
-
     r, J  = Gridap.Algebra.residual_and_jacobian(op, uh)
 
-    active_lb = findall(x .≈ lb) ∩ findall(r .> 0)
-    active_ub = findall(x .≈ ub) ∩ findall(r .< 0)
-    active = vcat(active_lb, active_ub)
+    active_lb = Int[]
+    active_ub = Int[]
+    active    = Int[]
+    actives   = Vector{Vector{Int}}() 
 
-    tmp_index = index[:]
-    tmp_index[active] .= 0
-    inactive  = findall(x->x!=0, tmp_index)
+    for i in 1:n
+        if x[i] ≤ lb[i] && r[i] > 0
+            push!(active_lb, i)
+        elseif x[i] ≥ ub[i] && r[i] < 0
+            push!(active_ub, i)
+        end
+    end
+
+    mask = trues(n)
+    mask[active] .= false
+    inactive = findall(mask)
 
     norm_residual_Ω = norm(reduced_residual(r, x, lb, ub))
     show_trace && print("BM: Iteration 0, residual norm = $norm_residual_Ω\n")
 
-    n = length(x)
-
     if history
         us = []
+        λs = []
     end
 
-    while norm_residual_Ω > tol && iter < max_iter
-        update = zeros(T, n)
-        update[inactive] = -J[inactive, inactive] \ r[inactive]
+    if solver_flag==Val(2) && isempty(nullsp)
+        nullsp = ones(n)
+    end
 
-        x = x + damping * update
+    update = similar(x)
+    while norm_residual_Ω > tol && iter < max_iter
+
+        jac = J[inactive,inactive]
+        fill!(update, zero(T))
+        update[inactive] .= compute_inactive_set_update(solver_flag, sym_pos_def, jac, r[inactive], nullsp, inactive)
+
+        x .+= damping * update
         project!(x,lb,ub)
-        uh = FEFunction(uh.fe_space,x)
+        uh.free_values .= x
         if history
-            push!(us, uh)
+            push!(us, FEFunction(vh.fe_space,copy(vh.free_values)))
+            push!(λs, copy(dual))
         end
 
-        r, J  = Gridap.Algebra.residual_and_jacobian(op, uh)
+        update_residual_and_jacobian!(linear_flag, J, r, op, uh)
         norm_residual_Ω = norm(reduced_residual(r, x, lb, ub))
 
-        active_lb = index[x .<= lb]
-        active_lb = intersect(active_lb, index[r .> zero(T)])
-        active_ub = index[x .>=ub]
-        active_ub = intersect(active_ub, index[r .< zero(T)])
-        active = vcat(active_lb, active_ub)
-        index2 = index[:]
-        index2[active] .= 0
-        inactive  = findall(x->x!=0, index2)
+        for i in 1:n
+            if x[i] ≤ lb[i] && r[i] > 0
+                push!(active_lb, i)
+            elseif x[i] ≥ ub[i] && r[i] < 0
+                push!(active_ub, i)
+            end
+        end
+
+        empty!(active)
+        append!(active, active_lb)
+        append!(active, active_ub)
+        history && push!(actives, active)
+    
+        fill!(mask, true)
+        mask[active] .= false
+        inactive = findall(mask)
 
         iter += 1
         show_trace && print("BM: Iteration $iter, residual norm = $norm_residual_Ω\n")
@@ -384,7 +402,7 @@ function bm(op, uh, lb::AbstractVector{T}, ub::AbstractVector{T}; us::AbstractVe
         show_trace && print("BM: Iteration max reached")
     end
     if history
-        return us, iter
+        return us, [iter, actives, λs]
     else
         return uh, iter
     end
