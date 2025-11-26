@@ -143,7 +143,7 @@ function SignoriniBox(nx::Integer,ny::Integer,nz::Integer,f::Function)
     σ(ε) = λ*tr(ε)*one(ε) + 2*μ*ε
 
     Ω = Triangulation(model)
-    dΩ = Measure(Ω,5)
+    dΩ = Measure(Ω,1)
 
     a(u,v) = ∫( ε(v) ⊙ (σ∘ε(u)) - f ⊙ v)*dΩ
     j(u,du,v) = ∫( ε(v) ⊙ (σ∘ε(du)) )*dΩ

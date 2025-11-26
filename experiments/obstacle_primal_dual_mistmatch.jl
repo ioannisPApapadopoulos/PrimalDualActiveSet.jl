@@ -13,8 +13,9 @@ for n in ns
     P = ObstacleProblemUniform(n,f,φ,d=2)
     u0 = FEFunction(P.V, zeros(P.V.nfree))
 
-    a(u,v) = ∫(u ⋅ v)*P.dΩ
-    j(u,du,v) = ∫(du ⋅ v)*P.dΩ
+    dΩ = Measure(P.Ω,2)
+    a(u,v) = ∫(u ⋅ v)*dΩ
+    j(u,du,v) = ∫(du ⋅ v)*dΩ
     op = FEOperator(a, j, P.U, P.V)
     M = Gridap.Algebra.jacobian(op, zeros(num_free_dofs(P.V)))
 

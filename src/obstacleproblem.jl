@@ -20,7 +20,7 @@ function ObstacleProblemUniform(n::Int, f::Function, φ::Function; d::Int=1)
     V = TestFESpace(model,reffe_u,labels=labels,dirichlet_tags="boundary",conformity=:H1)
     U = TrialFESpace(V, 0.0)
     Ω = Triangulation(model)
-    dΩ = Measure(Ω,5)
+    dΩ = Measure(Ω,1)
     a(u, v) =∫(∇(u) ⋅ ∇(v) - f ⋅ v) * dΩ
     j(u, du, v) =∫(∇(du) ⋅ ∇(v)) * dΩ
     op = FEOperator(a, j, U, V)
