@@ -40,7 +40,7 @@ function SignoriniRectangle(model::Gridap.Geometry.UnstructuredDiscreteModel, f:
     σ(ε) = λ*tr(ε)*one(ε) + 2*μ*ε
 
     Ω = Triangulation(model)
-    dΩ = Measure(Ω,5)
+    dΩ = Measure(Ω,1)
 
     a(u,v) = ∫( ε(v) ⊙ (σ∘ε(u)) - f ⊙ v)*dΩ
     j(u,du,v) = ∫( ε(v) ⊙ (σ∘ε(du)) )*dΩ
@@ -88,7 +88,7 @@ function ScalarSignoriniRectangle(nx::Integer, ny::Integer, f::Function)
     U = TrialFESpace(V, 0.0)
 
     Ω = Triangulation(model)
-    dΩ = Measure(Ω,5)
+    dΩ = Measure(Ω,1)
 
     a(u, v) =∫(∇(u) ⋅ ∇(v) - f ⋅ v) * dΩ
     j(u, du, v) =∫(∇(du) ⋅ ∇(v)) * dΩ
