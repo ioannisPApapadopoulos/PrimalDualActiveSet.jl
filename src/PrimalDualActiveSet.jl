@@ -6,7 +6,7 @@ import LinearAlgebra: ldiv!, Symmetric
 import IterativeSolvers: cg, gmres
 
 export hik, ssn, bm,
-    ObstacleProblem, ObstacleProblemUniform,
+    ObstacleProblem, ObstacleProblemUniform, BiactiveObstacle,
     SignoriniBox, SignoriniRectangle, ScalarSignoriniRectangle, linear_elasticity_nullsp,
     OptimalControlUniformSetup, 
     ControlConstrainedUniform, ControlH1ConstrainedUniform,

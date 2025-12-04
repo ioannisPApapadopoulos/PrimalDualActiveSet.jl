@@ -29,3 +29,25 @@ function ObstacleProblemUniform(n::Int, f::Function, φ::Function; d::Int=1)
     ub = interpolate_everywhere(φ, V).free_values
     return ObstacleProblem{Float64}(model, labels, V, U, Ω, dΩ, (a,j), op, lb, ub)
 end
+
+
+function BiactiveObstacle(n::Int, f::Function, φ::Function, g::Function)
+    domain = (-1,1,-1,1)
+    partition = (n,n)
+    model = CartesianDiscreteModel(domain,partition)
+    model = simplexify(model)
+    reffe_u = ReferenceFE(lagrangian,Float64,1)
+    labels = get_face_labeling(model)
+    V = TestFESpace(model,reffe_u,labels=labels,dirichlet_tags="boundary",conformity=:H1)
+
+    U = TrialFESpace(V, g)
+    Ω = Triangulation(model)
+    dΩ = Measure(Ω,6)
+    a(u, v) =∫(∇(u) ⋅ ∇(v) - f ⋅ v) * dΩ
+    j(u, du, v) =∫(∇(du) ⋅ ∇(v)) * dΩ
+    op = FEOperator(a, j, U, V)
+
+    ub = 1e10*ones(V.nfree)
+    lb = interpolate_everywhere(φ, V).free_values
+    return ObstacleProblem{Float64}(model, labels, V, U, Ω, dΩ, (a,j), op, lb, ub)
+end
