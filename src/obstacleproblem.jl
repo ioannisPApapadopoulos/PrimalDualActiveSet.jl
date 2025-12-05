@@ -47,7 +47,7 @@ function BiactiveObstacle(n::Int, f::Function, φ::Function, g::Function)
     j(u, du, v) =∫(∇(du) ⋅ ∇(v)) * dΩ
     op = FEOperator(a, j, U, V)
 
-    ub = 1e10*ones(V.nfree)
-    lb = interpolate_everywhere(φ, V).free_values
+    lb = -1e10*ones(V.nfree)
+    ub = interpolate_everywhere(φ, V).free_values
     return ObstacleProblem{Float64}(model, labels, V, U, Ω, dΩ, (a,j), op, lb, ub)
 end
