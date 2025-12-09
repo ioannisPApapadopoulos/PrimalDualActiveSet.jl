@@ -123,13 +123,14 @@ function hik(op, uh, lb::AbstractVector{T}, ub::AbstractVector{T}, linear_flag::
         x .+= damping*update;
         vh.free_values .= x
 
-        update_residual_and_jacobian!(linear_flag, J, r, op, vh)
-    
         # which way should the sign be?
+        linear_correction = J*update
         dual[inactive] .= zero(T);
-        dual[active_lb] .= r[active_lb]
-        dual[active_ub] .= -r[active_ub]
-        
+        dual[active_lb] .= r[active_lb] + linear_correction[active_lb]
+        dual[active_ub] .= -r[active_ub] - linear_correction[active_ub]
+
+        update_residual_and_jacobian!(linear_flag, J, r, op, vh)
+
         active_lb = findall((dual - x + lb).>0)
         active_ub = findall((dual - ub +x) .>0)
 
