@@ -26,7 +26,7 @@ for n in ns
     P = ObstacleProblemUniform(n,f,φ,d=2)
     u0 = FEFunction(P.V, zeros(P.V.nfree))
     vh, iter = hik(P, u0, max_iter=1000, history=true)
-    push!(hik_its_2d, iter)
+    push!(hik_its_2d, iter[1])
     push!(vhs_2d, vh)
     push!(λs_2d, iter[3])
     push!(As_2d, Gridap.Algebra.jacobian(P.op, zeros(n)))
