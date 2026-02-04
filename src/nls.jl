@@ -138,7 +138,7 @@ function hik(op, uh, lb::AbstractVector{T}, ub::AbstractVector{T}, linear_flag::
         append!(active, active_lb)
         append!(active, active_ub)
         # active = vcat(active_lb, active_ub)
-        history && push!(actives, active)
+        history && push!(actives, copy(active))
 
         # print(active)
         fill!(mask, true)
