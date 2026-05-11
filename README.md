@@ -19,6 +19,4 @@
 
 Primal-dual active set strategies applied to discretization obstacle problems feature layer-by-layer peeling where only dofs on the boundary of the active set can switch to the inactive set at each iteration.
 
-
-
-<video src="video/fine.mp4" width="320" height="240" controls></video>
+https://github.com/user-attachments/assets/6d8ff01a-6eb8-4d92-9534-7cb5701775d6
