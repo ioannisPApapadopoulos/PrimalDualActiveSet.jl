@@ -42,7 +42,7 @@ function hik(P::ObstacleProblem, u0::Gridap.FESpaces.SingleFieldFEFunction; solv
 end
 
 function ssn(P::ObstacleProblem, M::AbstractMatrix{T}, u0::Gridap.FESpaces.SingleFieldFEFunction; max_iter::Integer=1000, history::Bool=false) where T
-    ssn(P.op, u0, P.lb, P.ub, M, max_iter=max_iter, history=history)
+    ssn(P.op, u0, P.lb, P.ub, M, Val(true), max_iter=max_iter, history=history)
 end
 
 function hik(P::NonSymmetricObstacleProblem, z0::Union{Gridap.FESpaces.SingleFieldFEFunction,Gridap.MultiField.MultiFieldFEFunction}; solver_flag::Val=Val(1), max_iter::Integer=1000, history::Bool=false)

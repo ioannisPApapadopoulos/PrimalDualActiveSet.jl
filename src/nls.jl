@@ -223,14 +223,8 @@ function ssn(op, uh, lb::AbstractVector{T}, ub::AbstractVector{T}, M::AbstractMa
         λs = []
     end
 
-    if solver_flag==Val(2) && isempty(nullsp)
-        nullsp = ones(n)
-    end
-    
     uD = ExtendableSparseMatrix(Diagonal(ones(n)))
     lD = ExtendableSparseMatrix(Diagonal(ones(n)))
-
-    update = similar(x)
 
     while (norm_residual_Ω) > tol && (iter < max_iter)
 
@@ -280,11 +274,12 @@ function ssn(op, uh, lb::AbstractVector{T}, ub::AbstractVector{T}, M::AbstractMa
         @. dual_lb = dual-x+lb
         @. dual_ub = dual+x-ub
         norm_residual_Ω  = norm(dual - clamp!(dual_ub, 0, Inf) - clamp!(dual_lb, 0, Inf))
-        dual_lb .= (M*dual) 
+        dual_lb .= (M*dual)
+
         norm_residual_Ω  = (norm_residual_Ω  
             + norm(r[active_lb]-dual_lb[active_lb])
             + norm(r[active_ub]+dual_lb[active_ub])
-            + norm(r[inactive])
+            + norm(r[inactive]+dual_lb[inactive])
         )
 
 
