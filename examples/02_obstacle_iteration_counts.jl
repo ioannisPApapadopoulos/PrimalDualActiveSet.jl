@@ -1,5 +1,4 @@
-using PrimalDualActiveSet
-using Gridap, LinearAlgebra
+using PrimalDualActiveSet, Gridap, LinearAlgebra
 using Plots, LaTeXStrings
 
 # 1D Problem 1 Iteration Counts
