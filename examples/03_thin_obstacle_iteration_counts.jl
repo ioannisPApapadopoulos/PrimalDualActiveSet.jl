@@ -1,5 +1,4 @@
-using PrimalDualActiveSet
-using Gridap, LinearAlgebra
+using PrimalDualActiveSet, Gridap, LinearAlgebra
 using Plots, LaTeXStrings
 
 
@@ -12,6 +11,7 @@ function φ(x)
     end
 end
 
+# 2D Problem 2 Iteration Counts 
 hik_its = Integer[]
 ns = 2 .^(4:10)
 vhs, λs, As = [], [], []
@@ -26,22 +26,7 @@ for n in ns
 end
 print("HIK 2D Iteration Counts: $(hik_its)")
 
-# Plots.plot(vhs[3][end].free_values)
-
-rm("tmp_nl", recursive=true)
-if !isdir("tmp_nl")
-    mkdir("tmp_nl")
-end
-level = 7;
-Ω_m = vhs[level][1].cell_field.trian
-createpvd("scalar_signorini") do pvd
-    pvd[1] = createvtk(Ω_m, "tmp_nl/scalar_signorini_1" * ".vtu", cellfields=["u" => vhs[level][1]])
-    for k in 2:length(vhs[level])
-      pvd[k] = createvtk(Ω_m, "tmp_nl/scalar_signorini_$k" * ".vtu", cellfields=["u" => vhs[level][k]])
-    end
-end
-
-
+# 2D Problem 2 Convergence Plot
 norms = []
 for i in 1:lastindex(vhs)
     vh = vhs[i]
@@ -63,3 +48,15 @@ Plots.plot(norms,
     labelfontsize=12,xlabelfontsize=15, xtickfontsize=10, ytickfontsize=10, 
     legendfontsize=9)
 Plots.savefig("obstacle-line-convergence.pdf")
+
+# 3D Problem 2 Iteration Counts
+
+hik_its = Integer[]
+ns = 2 .^(4:8)
+for n in ns
+    P = ObstacleProblemUniform(n,f,φ,d=3)
+    u0 = FEFunction(P.V, zeros(P.V.nfree))
+    vh, iter = hik(P, u0, max_iter=1000, history=false)
+    push!(hik_its, iter[1])
+end
+print("HIK 3D Iteration Counts: $(hik_its)")

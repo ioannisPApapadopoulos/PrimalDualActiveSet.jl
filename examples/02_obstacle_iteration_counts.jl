@@ -1,24 +1,21 @@
-using PrimalDualActiveSet
-using Gridap, LinearAlgebra
+using PrimalDualActiveSet, Gridap, LinearAlgebra
 using Plots, LaTeXStrings
 
+# 1D Problem 1 Iteration Counts
 f(x) = 20
 φ(x) = 1.0
 
 hik_its_1d = Integer[]
 ns = 2 .^(4:10)
-vhs_1d, λs_1d, As_1d = [], [], []
 for n in ns
     P = ObstacleProblemUniform(n,f,φ,d=1)
     u0 = FEFunction(P.V, zeros(P.V.nfree))
-    vh, iter = hik(P, u0, max_iter=1000, history=true)
+    vh, iter = hik(P, u0, max_iter=1000, history=false)
     push!(hik_its_1d, iter[1])
-    push!(vhs_1d, vh)
-    push!(λs_1d, iter[3])
-    push!(As_1d, Gridap.Algebra.jacobian(P.op, zeros(n)))
 end
 print("HIK 1D Iteration Counts: $(hik_its_1d)")
 
+# 2D Problem 1 Iteration Counts
 hik_its_2d = []
 ns = 2 .^(4:10)
 vhs_2d, λs_2d, As_2d = [], [], []
@@ -34,6 +31,7 @@ end
 print("HIK 2D Iteration Counts: $(hik_its_2d)")
 
 
+# 2D Problem 1 Convergence Plot
 norms = []
 for i in 1:lastindex(vhs_2d)
     vh = vhs_2d[i]
@@ -55,3 +53,16 @@ Plots.plot(norms,
     labelfontsize=12,xlabelfontsize=15, xtickfontsize=10, ytickfontsize=10, 
     legendfontsize=9)
 Plots.savefig("obstacle_convergence_2d.pdf")
+
+# 3D Problem 1 Iteration Counts
+hik_its_3d = Integer[]
+dofs = Integer[]
+ns = 2 .^(4:8)
+for n in ns
+    P = ObstacleProblemUniform(n,f,φ,d=3)
+    push!(dofs, P.V.nfree)
+    u0 = FEFunction(P.V, zeros(P.V.nfree))
+    vh, iter = hik(P, u0, max_iter=1000, tol=1e-6, solver_flag=Val(1))
+    push!(hik_its_3d, iter[1])
+end
+print("HIK 3D Dofs: $(dofs), Iteration Counts: $(hik_its_3d)")
